@@ -33,7 +33,7 @@ export default function Register(): React.JSX.Element {
       email: data.email,
       password: data.password,
       options: {
-        // Storing additional user details inside Supabase data
+        emailRedirectTo: `${window.location.origin}`,
         data: {
           first_name: data.firstName,
           last_name: data.lastName,
