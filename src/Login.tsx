@@ -16,17 +16,14 @@ export default function Login(): React.JSX.Element {
 
   // Type-safe onSubmit handler
   const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
-    console.log("Login Data:", data);
-    const {error,data: {session}} = await supabase.auth.signInWithPassword({
+    const {error} = await supabase.auth.signInWithPassword({
       email: data.email,
       password: data.password,
     });
-    console.log(session);
     if (error) {
         console.error("Login Error:", error);
         alert(error.message);
     } else {
-        console.log('Login successful!');
         navigate('/');
     }
     
