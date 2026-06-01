@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './utils/supabase';
+import type { Session } from '@supabase/supabase-js';
+import { toast } from 'react-toastify';
+import {   useNavigate } from 'react-router-dom';
 
 export interface Todo {
   id: string | number; // Depends on if your DB uses UUID or BigInt Auto-increment
@@ -12,7 +15,14 @@ export default function TodosList() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
+  const [session,setSession] = useState<Session | null>(null); 
+  const navigate = useNavigate();
 
+  const fetchSession = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+if(!session) {navigate('/login');}   
+    setSession(session);
+  }
   // 1. Fetch Todos on Mount
   
   const fetchTodos = async (): Promise<void> => {
@@ -39,25 +49,22 @@ export default function TodosList() {
     e.preventDefault();
     if (!newTodo.trim()) return;
 
-    try {
       const { data, error } = await supabase
         .from('todos')
-        .insert([{ title: newTodo.trim()}])
+        .insert([{ title: newTodo.trim(),user_id: session?.user.id }])
         .select();
 
-      if (error) throw error;
+      if (error)
+        { 
+          toast.error(error.message);
+          return;
+        }
       
-      if (data && data.length > 0) {
-        console.log(data);
-        
+      if (data && data.length > 0) {        
         setTodos([data[0] as Todo, ...todos]);
         setNewTodo('');
       }
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error('Error adding todo:', error.message);
-      }
-    }
+    
   };
 
   // 3. Toggle Todo Completion Status
@@ -101,17 +108,40 @@ export default function TodosList() {
         }
       }
     };
-    
     useEffect(() => {
       (()=>{
-  
+
+        fetchSession();
+      })()
+      const ev = supabase.auth.onAuthStateChange((_, session) => {
+        setSession(session);
+        if (!session) {
+          navigate('/login');
+        }
+      });
+      return () => {
+        ev.data.subscription.unsubscribe();
+      }
+    }, []);
+    useEffect(() => {
+      (()=>{
         fetchTodos();
       })()
-    }, []);
+    }, [session]);
+    // if (!session) {
+    //   return <Navigate to="/login" replace />;
+        
+    // }
     return (
       <div className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8 font-sans">
       <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6 border border-gray-100">
-        
+        <div>
+        <h2>Welcome, {session?.user.email}</h2>
+        <button  className="block items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors ms-auto mb-4" 
+        onClick={() =>{ supabase.auth.signOut();navigate('/login')}  }>
+            logout
+          </button>
+        </div>
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Task Manager</h1>
